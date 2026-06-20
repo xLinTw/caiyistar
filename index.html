@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>彩翼之星 — 招人渠道統計</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:      #f4f4f6;
+  --surface: #ffffff;
+  --border:  #e4e4e8;
+  --text:    #111111;
+  --text2:   #555555;
+  --text3:   #aaaaaa;
+  --female:  #e04040;
+  --male:    #2e7fd0;
+  --tag:     #f0f0f2;
+  --accent:  #111111;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 24px 16px 60px;
+  font-size: 14px;
+  overflow-x: hidden;
+}
+
+/* ─ 頁首 ─ */
+.page-header { text-align: center; margin-bottom: 28px; }
+.page-header h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: .1em; }
+.page-header .meta {
+  margin-top: 6px; font-size: .78rem; color: var(--text3);
+  display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+}
+.f-dot, .m-dot { width:9px; height:9px; border-radius:50%; display:inline-block; vertical-align: middle; }
+.f-dot { background: var(--female); }
+.m-dot { background: var(--male); }
+
+/* ─ 頁籤 ─ */
+.tabs {
+  display: flex; gap: 4px; max-width: 960px; margin: 0 auto 24px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 5px;
+}
+.tab-btn {
+  flex: 1; padding: 9px 12px; border: none; border-radius: 8px;
+  background: transparent; color: var(--text3); cursor: pointer;
+  font-size: .88rem; font-family: inherit; font-weight: 500;
+  letter-spacing: .03em; transition: all .15s;
+}
+.tab-btn.active { background: var(--accent); color: #fff; }
+.tab-btn:hover:not(.active) { color: var(--text2); background: var(--bg); }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ─ 共用 ─ */
+.wrap { max-width: 960px; margin: 0 auto; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; min-width: 0; }
+.card + .card, .card + .detail-wrap { margin-top: 16px; }
+.card-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; }
+.card-head h2 { font-size: .9rem; font-weight: 600; }
+.card-head .sub { font-size: .76rem; color: var(--text3); }
+
+/* ─ KPI ─ */
+.kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 16px; }
+@media(max-width:640px){ .kpi-row { grid-template-columns: 1fr 1fr; } }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.kpi .k-lbl { font-size: .72rem; color: var(--text3); margin-bottom: 5px; }
+.kpi .k-val { font-size: .86rem; font-weight: 400; color: var(--text); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: baseline; gap: 5px; flex-wrap: nowrap; }
+.kpi .k-sub { font-size: .86rem; color: var(--text3); font-weight: 400; flex-shrink: 0; }
+
+/* ─ 雙欄 ─ */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.two-col > * { min-width: 0; }
+@media(max-width:800px){
+  .two-col { grid-template-columns: 1fr; }
+  .two-col > .card:first-child { order: 2; }
+  .two-col > .card:last-child  { order: 1; }
+}
+
+/* ─ 月份篩選 ─ */
+.cf-wrap { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+.cf-row {
+  display: flex; gap: 5px; flex-wrap: nowrap; overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.cf-row::-webkit-scrollbar { display: none; }
+.cf-btn {
+  flex-shrink: 0;
+  padding: 4px 11px; border: 1px solid var(--border);
+  border-radius: 20px; background: var(--tag); color: var(--text3);
+  cursor: pointer; font-size: .76rem; font-family: inherit; font-weight: 500;
+  transition: all .15s; white-space: nowrap;
+}
+.cf-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cf-btn:hover:not(.active) { border-color: #aaa; color: var(--text2); }
+
+/* ─ 圓餅圖 ─ */
+.chart-wrap { max-width: 280px; margin: 0 auto 10px; cursor: pointer; }
+.chart-hint { text-align: center; font-size: .74rem; color: var(--text3); margin-bottom: 6px; }
+.chart-foot { text-align: center; font-size: .78rem; color: var(--text3); margin-top: 8px; }
+.chart-foot b { font-size: 1.4rem; font-weight: 700; color: var(--text); display: block; }
+/* ─ 圖例 ─ */
+.chart-legend-wrap {
+  overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  margin-top: 10px; padding-bottom: 2px; text-align: center;
+}
+.chart-legend-wrap::-webkit-scrollbar { display: none; }
+.chart-legend {
+  display: inline-flex; flex-wrap: nowrap; gap: 12px;
+  align-items: center; padding: 0 4px;
+}
+.leg-item {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .75rem; color: var(--text3); white-space: nowrap; cursor: default;
+}
+.leg-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* ─ 可編輯表 ─ */
+.edit-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.edit-table thead th {
+  padding: 8px 6px; text-align: left; color: var(--text3);
+  font-weight: 600; font-size: .74rem; border-bottom: 1px solid var(--border);
+}
+.edit-table thead th:nth-child(2),
+.edit-table thead th:nth-child(3) { text-align: right; }
+.edit-table thead th:last-child { text-align: center; }
+.edit-table tbody td { padding: 7px 6px; border-bottom: 1px solid #f2f2f4; vertical-align: middle; }
+.edit-table tbody tr:hover td { background: var(--bg); }
+.ch-cell { display: flex; align-items: center; gap: 8px; }
+.ch-dot { width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+.ch-name-sel {
+  border: 1px solid var(--border); border-radius: 5px; padding: 3px 6px;
+  font-size: .84rem; font-family: inherit; color: var(--text);
+  background: var(--surface); cursor: pointer; outline: none;
+  transition: border-color .15s; max-width: 130px;
+}
+.ch-name-sel:focus { border-color: #888; }
+input[type="text"], input[type="number"] {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); padding: 4px 8px;
+  font-size: .86rem; font-family: inherit; outline: none; width: 100%;
+  transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="number"]:focus { border-color: #888; background:#fff; }
+input[type="number"] { width: 62px; text-align: right; }
+.pct-cell { color: var(--text3); font-size: .76rem; text-align: right; min-width: 42px; }
+.del-btn {
+  background: none; border: none; color: var(--text3);
+  cursor: pointer; font-size: .95rem; padding: 3px 7px;
+  border-radius: 5px; transition: all .15s; display: block; margin: 0 auto;
+}
+.del-btn:hover { background: var(--tag); color: #888; }
+.add-btn {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 12px; background: transparent;
+  border: 1px dashed var(--border); border-radius: 8px;
+  padding: 8px 12px; color: var(--text3); cursor: pointer;
+  font-size: .86rem; width: 100%; font-family: inherit; transition: all .15s;
+}
+.add-btn:hover { background: var(--bg); border-color: #aaa; color: var(--text2); }
+.btn-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.btn {
+  flex: 1; min-width: 90px; background: var(--tag);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
+  color: var(--text2); cursor: pointer; font-size: .82rem;
+  font-family: inherit; transition: background .15s;
+}
+.btn:hover { background: #e8e8ea; }
+
+/* ─ 編輯切換 ─ */
+.edit-toggle {
+  margin-left: auto; background: var(--tag); border: 1px solid var(--border);
+  border-radius: 8px; padding: 4px 14px; font-size: .78rem;
+  font-family: inherit; font-weight: 600; color: var(--text2);
+  cursor: pointer; letter-spacing: .03em; transition: all .15s; white-space: nowrap;
+}
+.edit-toggle:hover { background: #e8e8ea; }
+.edit-toggle.on { background: var(--text); color: #fff; border-color: var(--text); }
+
+/* ─ 簡覽列 ─ */
+.cpt-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid #f2f2f4;
+}
+.cpt-row:last-child { border-bottom: none; }
+.cpt-name { flex:1; font-size:.86rem; color:var(--text2); overflow:hidden; text-overflow:ellipsis; min-width:0; white-space: nowrap; }
+.cpt-cnt  { font-size:.86rem; font-weight:600; color:var(--text); white-space: nowrap; flex-shrink:0; }
+.cpt-pct  { font-size:.76rem; color:var(--text3); min-width:38px; text-align:right; white-space: nowrap; flex-shrink:0; }
+.mobile-inline-count { display: none; }
+.cpt-empty { padding: 10px 0; color: var(--text3); font-size: .78rem; text-align: center; }
+
+/* ─ 數量增減控件 ─ */
+.num-ctrl { display:inline-flex; align-items:center; gap:5px; }
+.nc-btn {
+  width:26px; height:26px; border:1px solid var(--border);
+  border-radius:6px; background:var(--tag); color:var(--text2);
+  cursor:pointer; font-size:1.05rem; line-height:1; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .12s; font-family:inherit; padding:0; user-select:none;
+}
+.nc-btn:hover { background:#e0e0e2; }
+.nc-btn:active { background:#d4d4d6; }
+.nc-input { width:52px; text-align:center; }
+
+/* ─ 詳細展開面板 ─ */
+.detail-wrap {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 20px 24px;
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+#detailWrap { margin-top: 16px; }
+#monthSummaryWrap { margin-top: 16px; }
+.detail-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.detail-head h3 { font-size: .95rem; font-weight: 700; }
+.detail-head .close-btn {
+  background: var(--tag); border: none; border-radius: 6px;
+  width: 28px; height: 28px; cursor: pointer; font-size: 1rem;
+  color: var(--text3); transition: all .15s; display: flex; align-items: center; justify-content: center;
+}
+.detail-head .close-btn:hover { background: #e0e0e2; color: var(--text); }
+
+.d-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.d-table thead th {
+  padding: 8px 14px; text-align: center; background: var(--bg);
+  color: var(--text3); font-size: .75rem; font-weight: 600;
+  border-bottom: 2px solid var(--border); white-space: nowrap;
+}
+.mo-summary-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px; overflow-x: auto;
+}
+@media(max-width:800px) {
+  .mo-summary-grid { grid-template-columns: 1fr; gap: 14px; }
+}
+.d-table thead th:first-child { text-align: left; }
+.d-table tbody td {
+  padding: 10px 14px; border-bottom: 1px solid #f2f2f4;
+  text-align: center; color: var(--text2);
+}
+.d-table tbody td:first-child { text-align: left; color: var(--text3); font-size: .82rem; }
+.d-table tbody tr:hover td { background: var(--bg); }
+.d-table tr.d-total td {
+  background: #f8f8fa; border-top: 2px solid var(--border);
+  font-weight: 700; color: var(--text);
+}
+.d-table tr.d-total td:first-child { color: var(--text2); }
+.d-table .cnt { font-size: .88rem; font-weight: 600; color: var(--text); }
+.d-table .empty-cell { color: #ddd; }
+
+/* 女紅 男藍 */
+.gc { display: inline-flex; align-items: center; gap: 4px; }
+.ft { display: inline-flex; align-items: center; gap: 3px; color: var(--female); font-weight: 600; }
+.mt { display: inline-flex; align-items: center; gap: 3px; color: var(--male);   font-weight: 600; }
+.fd { width:8px; height:8px; border-radius:50%; background:var(--female); display:inline-block; }
+.md { width:8px; height:8px; border-radius:50%; background:var(--male);   display:inline-block; }
+.sp { color:#ccc; margin:0 1px; }
+
+/* ─ 渠道資訊表 ─ */
+.i-table { width: 100%; border-collapse: collapse; font-size: .82rem; line-height: 1.45; }
+.i-table thead th {
+  background: var(--bg); padding: 9px 12px; text-align: left;
+  color: var(--text2); font-weight: 400; font-size: inherit;
+  letter-spacing: 0; border-bottom: 1px solid var(--border);
+}
+.i-table tbody td { padding: 10px 12px; border-bottom: 1px solid #f2f2f4; color: var(--text2); }
+.i-table tbody tr:hover td { background: var(--bg); }
+.cat-sep td {
+  background: var(--bg) !important; color: var(--text3) !important;
+  font-size: .72rem; font-weight: 700; letter-spacing: .1em;
+  padding: 7px 12px !important; border-top: 2px solid var(--border) !important;
+}
+.ch-name { color: var(--text2); font-weight: 400; font-size: inherit; }
+.badge { display:inline-block; padding:2px 9px; border-radius:20px; font-size:.76em; font-weight:600; }
+.b-on { background:#111; color:#fff; }
+.b-ok { background:#edf7ee; color:#2a7a2e; border:1px solid #b8deba; }
+.b-no { background:#fdf0f0; color:#c0392b; border:1px solid #f5c2c2; }
+.b-nil { color:var(--text3); font-size:inherit; }
+.cost { background:var(--tag); border-radius:5px; padding:2px 8px; font-size:.92em; color:var(--text2); }
+.note-text { color: var(--text2); font-size: inherit; line-height: inherit; white-space: normal; }
+.nil  { color:#ddd; }
+
+/* ─ 狀態下拉 ─ */
+.status-select {
+  border: 1px solid var(--border); border-radius: 20px;
+  padding: 3px 8px; font-size: .9em; font-family: inherit;
+  background: var(--bg); color: var(--text2); cursor: pointer;
+  outline: none; transition: border-color .15s;
+}
+.status-select:focus { border-color: #888; }
+
+/* ─ 渠道資訊編輯輸入框 ─ */
+.i-edit-input {
+  border: 1px solid var(--border); border-radius: 5px;
+  padding: 4px 7px; font-size: inherit; font-family: inherit;
+  color: var(--text); background: var(--surface); width: 100%;
+  outline: none; transition: border-color .15s; min-width: 70px;
+}
+.i-edit-input:focus { border-color: #888; }
+.del-row-btn {
+  background: none; border: none; color: #ccc; cursor: pointer;
+  font-size: .9rem; padding: 3px 7px; border-radius: 4px;
+  transition: color .15s, background .15s;
+}
+.del-row-btn:hover { color: #c0392b; background: #fdf0f0; }
+.add-ch-btn {
+  margin-top: 10px; background: none; border: 1.5px dashed var(--border);
+  border-radius: 7px; padding: 8px 16px; font-size: .84rem;
+  color: var(--text3); cursor: pointer; width: 100%; text-align: left;
+  transition: border-color .15s, color .15s;
+}
+.add-ch-btn:hover { border-color: #888; color: var(--text); }
+/* 分類內新增按鈕行 */
+.cat-add-row td { padding: 4px 12px !important; border-bottom: none; background: transparent !important; }
+.cat-add-btn {
+  background: none; border: none; color: var(--text3); font-size: .8rem;
+  font-family: inherit; cursor: pointer; padding: 3px 0;
+  display: inline-flex; align-items: center; gap: 5px;
+  transition: color .15s;
+}
+.cat-add-btn:hover { color: var(--text); }
+
+/* ─ Tab2 頁面標題列 ─ */
+.info-page-head {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 12px; padding: 0 2px;
+}
+.info-page-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+
+/* ─ 分類獨立卡片 ─ */
+.info-cat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; margin-bottom: 10px; overflow: hidden;
+}
+.info-cat-head-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface); padding: 7px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.info-cat-title {
+  font-size: .88rem; font-weight: 700; color: var(--text); letter-spacing: 0;
+}
+
+/* ── 平板 (≤800px) ── */
+@media(max-width:800px) {
+  .card { padding: 16px 18px; }
+  .kpi-row { gap: 10px; }
+  .kpi { padding: 11px 13px; }
+}
+
+/* ── 手機 (≤520px) ── */
+@media(max-width:520px) {
+  html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+  body { padding: 10px 7px 42px; font-size: 12px; }
+  .wrap, .tabs, .two-col, .card, .kpi-row { width: 100%; max-width: 100%; }
+  .card { padding: 10px 9px; border-radius: 10px; }
+  .card-head { margin-bottom: 9px; gap: 6px; align-items: flex-start; flex-wrap: wrap; }
+  .card-head h2 { font-size: .76rem; line-height: 1.35; }
+  .card-head .sub { font-size: .64rem; line-height: 1.35; }
+  .page-header { margin-bottom: 14px; }
+  .page-header h1 { font-size: 1.08rem; letter-spacing: .06em; }
+  .page-header .meta { gap: 5px; font-size: .64rem; line-height: 1.45; }
+  .f-dot, .m-dot { width: 7px; height: 7px; }
+  .tabs { margin-bottom: 10px; padding: 3px; border-radius: 9px; }
+  .tab-btn { font-size: .68rem; padding: 6px 4px; border-radius: 6px; }
+  .edit-toggle { font-size: .66rem; padding: 3px 9px; border-radius: 6px; }
+  .kpi-row { gap: 6px; margin-bottom: 10px; }
+  .kpi { padding: 8px 8px; border-radius: 8px; min-width: 0; }
+  .kpi .k-val {
+    font-size: .82rem;
+    line-height: 1.3;
+    white-space: normal;
+    overflow: visible;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+  .kpi .k-lbl { font-size: .6rem; margin-bottom: 3px; }
+  .kpi .k-sub { font-size: .62rem; }
+  .cf-wrap { margin-bottom: 9px; gap: 4px; }
+  .cf-row { gap: 4px; padding-bottom: 3px; }
+  .cf-btn { font-size: .64rem; padding: 3px 8px; border-radius: 14px; }
+  .chart-hint { font-size: .64rem; margin-bottom: 4px; }
+  .chart-foot { font-size: .64rem; margin-top: 5px; }
+  .chart-foot b { font-size: 1.05rem; }
+  .leg-item { font-size: .64rem; gap: 4px; }
+  .leg-dot { width: 7px; height: 7px; }
+  /* 渠道列表 */
+  .cpt-row {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr) 48px;
+    gap: 5px;
+    padding: 5px 0;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .cpt-row > * { min-width: 0; }
+  .cpt-name { font-size: .7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mobile-inline-count { display: inline; color: var(--text); font-weight: 600; margin-left: 5px; }
+  .cpt-cnt  { display: none; }
+  .cpt-pct  { display: none; }
+  .cpt-empty { font-size: .66rem; padding: 8px 0; }
+  .ch-dot   { width: 8px; height: 8px; }
+  /* 表格 */
+  .edit-table { font-size: .68rem; min-width: 330px; }
+  .edit-table thead th { padding: 5px 4px; font-size: .6rem; }
+  .edit-table tbody td { padding: 5px 4px; }
+  .ch-cell { gap: 5px; }
+  .ch-name-sel { max-width: 92px; font-size: .66rem; padding: 2px 4px; }
+  input[type="text"], input[type="number"] { font-size: .68rem; padding: 3px 5px; }
+  input[type="number"] { width: 44px; }
+  .edit-table input[type="number"] { width: 42px !important; font-size: .7rem !important; padding: 3px 3px; }
+  .edit-table tbody td:nth-child(4) { font-size: .72rem !important; padding-right: 5px !important; }
+  .del-btn { font-size: .72rem; padding: 2px 5px; }
+  .add-btn, .btn { font-size: .68rem; padding: 7px 8px; border-radius: 7px; }
+  .btn-row { gap: 6px; margin-top: 10px; }
+  .i-table { font-size: .66rem; min-width: 520px; line-height: 1.4; }
+  .i-table thead th { padding: 5px 6px; }
+  .i-table tbody td { padding: 6px 6px; }
+  .i-edit-input { padding: 3px 5px; min-width: 58px; }
+  .status-select { padding: 2px 5px; }
+  .cost  { padding: 1px 5px; }
+  .badge { padding: 1px 5px; }
+  .i-table td[style*="white-space:nowrap"] { white-space: normal !important; min-width: 72px; }
+  .cat-add-btn { font-size: .68rem; }
+  /* 分類卡片 */
+  .info-cat-card { margin-bottom: 9px; }
+  .info-cat-head-row { padding: 5px 8px; }
+  .info-cat-title { font-size: .72rem; }
+  .info-page-head { margin-bottom: 8px; }
+  .info-page-title { font-size: .78rem; }
+  /* 區塊間距 */
+  .two-col { gap: 10px; }
+  .card + .card, .card + .detail-wrap { margin-top: 10px; }
+  .kpi-row { margin-bottom: 10px; }
+  #detailWrap, #monthSummaryWrap { margin-top: 10px; }
+  /* 圓餅圖 */
+  .chart-wrap { max-width: 175px; }
+  .detail-wrap { padding: 12px 10px; border-radius: 10px; }
+  .detail-head { margin-bottom: 9px; gap: 8px; }
+  .detail-head h3 { font-size: .76rem; line-height: 1.35; }
+  .detail-head .close-btn { width: 24px; height: 24px; font-size: .8rem; }
+  .d-table { font-size: .68rem; min-width: 330px; }
+  .d-table thead th { padding: 5px 6px; font-size: .6rem; }
+  .d-table tbody td { padding: 6px 6px; }
+  .d-table tbody td:first-child { font-size: .66rem; }
+  .d-table .cnt { font-size: .7rem; }
+  /* 詳細面板雙欄 → 單欄 */
+  #monthSummaryWrap .detail-wrap > div[style*="grid"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media(max-width:380px) {
+  body { padding-left: 5px; padding-right: 5px; font-size: 11px; }
+  .card { padding: 9px 7px; }
+  .page-header h1 { font-size: 1rem; }
+  .page-header .meta { font-size: .6rem; }
+  .kpi-row { gap: 5px; }
+  .kpi { padding: 7px 6px; }
+  .kpi .k-val { font-size: .76rem; }
+  .tab-btn { font-size: .64rem; }
+  .chart-wrap { max-width: 160px; }
+}
+.cat-select {
+  border: 1px solid var(--border); border-radius: 5px; padding: 4px 7px;
+  font-size: .78rem; font-family: inherit; background: var(--bg);
+  color: var(--text2); cursor: pointer; outline: none; width: 100%;
+}
+</style>
+</head>
+<body>
+
+<!-- ══ 頁首 ══ -->
+<div class="page-header">
+  <h1>彩翼之星</h1>
+  <div class="meta">
+    <span>招人宣傳渠道統計分析</span>
+    <span>·</span>
+    <span id="visitTime">進入時間：--</span>
+  </div>
+</div>
+
+<!-- ══ 頁籤 ══ -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab(0)">渠道統計</button>
+  <button class="tab-btn"        onclick="switchTab(1)">渠道資訊</button>
+</div>
+
+<!-- ══════ Tab 1：渠道統計 ══════ -->
+<div id="tab0" class="tab-pane active">
+  <div class="wrap">
+
+    <!-- KPI -->
+    <div class="kpi-row" id="kpiRow"></div>
+
+    <!-- 雙欄 -->
+    <div class="two-col">
+
+      <!-- 圓餅圖 -->
+      <div class="card">
+        <div class="card-head">
+          <h2>渠道佔比</h2>
+          <span class="sub" id="chartSub">2026年3月–6月 · 全部累計</span>
+        </div>
+        <!-- 月份篩選 -->
+        <div class="cf-wrap" id="cfRow"></div>
+        <p class="chart-hint">點擊色塊查看該渠道明細 ↓</p>
+        <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+        <div class="chart-foot">
+          <span id="chartFootLbl">累計面試人數</span>
+          <b id="totalCount">0</b>
+        </div>
+        <div class="chart-legend-wrap"><div id="chartLegend" class="chart-legend"></div></div>
+      </div>
+
+      <!-- 渠道數據 -->
+      <div class="card">
+        <div class="card-head">
+          <h2>渠道數據</h2>
+          <button class="edit-toggle" id="editToggle" onclick="toggleEdit()">編輯</button>
+        </div>
+        <!-- 月份篩選（同步左側） -->
+        <div class="cf-wrap" id="cfRow2"></div>
+        <!-- 簡覽（預設） -->
+        <div id="cptView"></div>
+        <!-- 編輯（隱藏） -->
+        <div id="editView" style="display:none">
+          <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px;letter-spacing:.03em" id="editPeriodLbl">全部累計</div>
+          <div style="overflow-x:auto">
+          <table class="edit-table">
+            <thead>
+              <tr>
+                <th>渠道</th>
+                <th style="text-align:center;white-space:nowrap;color:var(--female)">女</th>
+                <th style="text-align:center;white-space:nowrap;color:var(--male)">男</th>
+                <th style="text-align:right;white-space:nowrap">合計</th>
+                <th style="text-align:center;white-space:nowrap">刪</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+          </div>
+          <button class="add-btn" onclick="addRow()">＋ 新增渠道</button>
+          <div class="btn-row">
+            <button class="btn" onclick="exportPNG()">⬇ 圖表 PNG</button>
+            <button class="btn" onclick="exportCSV()">⬇ CSV</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 詳細展開（單一渠道） -->
+    <div id="detailWrap" style="display:none"></div>
+
+    <!-- 當月全渠道彙總 -->
+    <div id="monthSummaryWrap" style="display:none"></div>
+
+  </div>
+</div>
+
+<!-- ══════ Tab 2：渠道資訊 ══════ -->
+<div id="tab1" class="tab-pane">
+  <div class="wrap">
+    <!-- 標題列 -->
+    <div class="info-page-head">
+      <span class="info-page-title">渠道費用與狀況</span>
+      <button class="edit-toggle" id="infoEditToggle" onclick="toggleInfoEdit()" style="margin-left:auto">編輯</button>
+    </div>
+    <!-- 各分類卡片（由 renderInfo 注入） -->
+    <div id="infoBlocks"></div>
+    <!-- 線下傳單卡片 -->
+    <div class="info-cat-card" style="margin-top:12px">
+      <div class="info-cat-head-row">
+        <span class="info-cat-title">線下傳單</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="i-table" id="offlineTable">
+          <thead>
+            <tr id="offlineThead">
+              <th>項目</th>
+              <th style="text-align:right">印製量</th>
+              <th>月費用</th>
+              <th>狀態</th>
+              <th>備注</th>
+              <th id="offlineDelTh" style="width:28px;display:none"></th>
+            </tr>
+          </thead>
+          <tbody id="offlineBody"></tbody>
+        </table>
+      </div>
+      <div id="addOfflineBtnWrap" style="display:none;padding:0 4px 4px">
+        <button class="add-ch-btn" onclick="addOfflineRow()">＋ 新增項目</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════ 資料 ══════════════════════ */
+
+const MONTHS = [
+  { key:'3月', year:2026,
+    cols:['instagram','Threads','1111','518','ACCUPASS','打工趣'],
+    weeks:[
+      {period:'3/1 – 3/8',   data:[[1,0],[2,6],[0,0],[0,0],[0,0],[0,0]], tot:[3,6]  },
+      {period:'3/9 – 3/15',  data:[[4,0],[4,2],[0,0],[0,0],[0,0],[0,0]], tot:[8,2]  },
+      {period:'3/16 – 3/22', data:[[3,2],[9,4],[0,0],[0,0],[0,0],[0,0]], tot:[12,6] },
+      {period:'3/23 – 3/31', data:[[5,1],[9,7],[0,0],[0,0],[0,0],[0,0]], tot:[14,8] },
+    ]
+  },
+  { key:'4月', year:2026,
+    cols:['instagram','Threads','1111','518','ACCUPASS','打工趣'],
+    weeks:[
+      {period:'4/1 – 4/5',   data:[[3,1],[4,3],[0,0],[0,0],[0,0],[0,0]], tot:[7,4]  },
+      {period:'4/6 – 4/12',  data:[[5,4],[4,2],[0,0],[0,0],[0,0],[0,0]], tot:[9,6]  },
+      {period:'4/13 – 4/19', data:[[1,0],[6,0],[0,0],[0,0],[0,0],[0,0]], tot:[7,0]  },
+      {period:'4/20 – 4/26', data:[[0,4],[3,3],[0,0],[0,0],[0,0],[0,0]], tot:[3,7]  },
+      {period:'4/27 – 4/30', data:[[2,2],[4,1],[0,0],[0,0],[0,0],[0,0]], tot:[6,3]  },
+    ]
+  },
+  { key:'5月', year:2026,
+    cols:['instagram','Threads','1111','518','ACCUPASS','打工趣'],
+    weeks:[
+      {period:'5/1 – 5/3',   data:[[2,0],[2,1],[0,0],[0,0],[0,0],[0,0]], tot:[4,1]  },
+      {period:'5/4 – 5/10',  data:[[3,1],[4,1],[0,0],[0,2],[0,0],[0,0]], tot:[7,4]  },
+      {period:'5/11 – 5/17', data:[[2,1],[2,0],[0,0],[2,4],[0,0],[0,0]], tot:[6,5]  },
+      {period:'5/18 – 5/24', data:[[1,0],[1,0],[0,0],[0,2],[0,0],[0,0]], tot:[2,2]  },
+      {period:'5/25 – 5/31', data:[[0,0],[1,1],[0,0],[6,2],[0,0],[0,0]], tot:[7,3]  },
+    ]
+  },
+  { key:'6月', year:2026,
+    cols:['instagram','Threads','1111','518','ACCUPASS','打工趣'],
+    weeks:[
+      {period:'6/1 – 6/7',   data:[[1,0],[2,2],[0,0],[2,0],[0,0],[0,0]], tot:[5,2] },
+      {period:'6/8 – 6/14',  data:[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]], tot:[0,0] },
+      {period:'6/15 – 6/21', data:[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]], tot:[0,0] },
+      {period:'6/22 – 6/28', data:[[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]], tot:[0,0] },
+    ]
+  },
+];
+
+// 全年 12 個月（無資料月份 weeks 為空，顯示 0）
+const YEAR_MONTHS = Array.from({length:12}, (_, i) => {
+  const key = `${i+1}月`;
+  return MONTHS.find(m => m.key === key) || { key, year:2026, cols:MONTHS[0].cols, weeks:[] };
+});
+
+const CHANNELS = [
+  {cat:'社群媒體',     name:'臉書',     monthly:'',                  quarterly:'',                   status:'使用中',notes:'廣告需審核'},
+  {cat:'社群媒體',     name:'Instagram',monthly:'預算 $1,000',       quarterly:'',                   status:'使用中',notes:'廣告需審核'},
+  {cat:'社群媒體',     name:'Threads',  monthly:'',                  quarterly:'',                   status:'使用中',notes:'廣告需審核'},
+  {cat:'傳統人力銀行', name:'104',      monthly:'',                  quarterly:'',                   status:'無法',  notes:'無法'},
+  {cat:'傳統人力銀行', name:'1111',     monthly:'NT$4,200',          quarterly:'NT$8,400',           status:'使用中',notes:'待確認'},
+  {cat:'傳統人力銀行', name:'518',      monthly:'NT$2,200',          quarterly:'NT$4,800',           status:'使用中',notes:'須付費才登'},
+  {cat:'傳統人力銀行', name:'yes123',   monthly:'NT$1,800 – $3,200', quarterly:'$3,900 – $6,800',    status:'可以',  notes:''},
+  {cat:'傳統人力銀行', name:'工作吧!',  monthly:'NT$1,688',          quarterly:'NT$4,500',           status:'可以',  notes:'須付費刊登'},
+  {cat:'兼職多',       name:'小雞上工', monthly:'曝光型 算流計費',   quarterly:'11則以上 $850',      status:'無法',  notes:'需審核'},
+  {cat:'兼職多',       name:'打工趣',   monthly:'$599 / 1,399 / 2,299', quarterly:'$1,799 / 4,197 / 6,897', status:'可以', notes:''},
+  {cat:'兼職多',       name:'打工探吉', monthly:'',                  quarterly:'',                   status:'無法',  notes:''},
+  {cat:'主線上課平台', name:'hahow',    monthly:'',                  quarterly:'',                   status:'',      notes:'考慮直播線上'},
+  {cat:'主線下課平台', name:'ACCUPASS', monthly:'免費',              quarterly:'形象顧問fb廣告',     status:'使用中',notes:'刊登審核中'},
+  {cat:'主線下課平台', name:'KKTIX',    monthly:'免費',              quarterly:'',                   status:'可以',  notes:''},
+  {cat:'主線下課平台', name:'BeClass',  monthly:'免費',              quarterly:'',                   status:'可以',  notes:''},
+];
+
+/* ══════════════════════ 工具 ══════════════════════ */
+function uid() { return '_' + Math.random().toString(36).slice(2,9); }
+function esc(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function fm(f, m, showDash=true) {
+  if (f===0 && m===0) return showDash ? '<span class="nil">—</span>' : '';
+  const fp = f>0 ? `<span class="ft"><span class="fd"></span>${f}女</span>` : '';
+  const sep = f>0&&m>0 ? `<span class="sp">/</span>` : '';
+  const mp = m>0 ? `<span class="mt"><span class="md"></span>${m}男</span>` : '';
+  return `<span class="gc">${fp}${sep}${mp}</span>`;
+}
+
+function monthTotal(mo) {
+  const chs = mo.cols.map(()=>[0,0]);
+  let tf=0, tm=0;
+  for(const w of mo.weeks){ w.data.forEach((d,i)=>{chs[i][0]+=d[0];chs[i][1]+=d[1];}); tf+=w.tot[0]; tm+=w.tot[1]; }
+  return {chs, tot:[tf,tm]};
+}
+
+/* ══════════════════════ 圓餅圖 ══════════════════════ */
+const PALETTE = ['#2c3e50','#7f8c8d','#aab7b8','#566573','#1b2631','#99a3a4','#34495e','#bdc3c7'];
+
+function computeTotals() {
+  const cols = MONTHS[0].cols;
+  const totals = cols.map(()=>({f:0,m:0}));
+  for(const mo of MONTHS) for(const w of mo.weeks) w.data.forEach((d,i)=>{totals[i].f+=d[0];totals[i].m+=d[1];});
+  return cols.map((name,i)=>({id:uid(), name, female:totals[i].f, male:totals[i].m, count:totals[i].f+totals[i].m}));
+}
+
+let rows = computeTotals();
+
+// 每月各自可編輯的渠道數字（初始值從 MONTHS 週次資料算出）
+function computeMonthRows() {
+  return YEAR_MONTHS.map(mo => {
+    const totals = mo.cols.map(() => ({f:0,m:0}));
+    for (const w of mo.weeks) w.data.forEach((d, i) => { totals[i].f += d[0]; totals[i].m += d[1]; });
+    return mo.cols.map((name, i) => ({ id: uid(), name, female: totals[i].f, male: totals[i].m, count: totals[i].f + totals[i].m }));
+  });
+}
+let monthRows = computeMonthRows();
+
+// 回傳目前模式對應的可編輯陣列（chartMonthFilter 現在是 0-11）
+function getEditRows() {
+  return chartMonthFilter !== null ? monthRows[chartMonthFilter] : rows;
+}
+
+let chartMonthFilter = null; // null=年度全部, 0-11=各月(1月=0)
+let chartYearFilter = null;  // null=未選年, 2026=已選
+let selectedSlice = null;    // 目前選中的渠道名稱
+let activeTab = 0;
+
+function normalizeRow(r) {
+  const female = Math.max(0, parseInt(r.female) || 0);
+  const male = Math.max(0, parseInt(r.male) || 0);
+  return { id: r.id || uid(), name: r.name || '', female, male, count: female + male };
+}
+
+function ensureMonthRowsShape() {
+  monthRows = YEAR_MONTHS.map((mo, idx) => {
+    const existing = Array.isArray(monthRows[idx]) ? monthRows[idx].map(normalizeRow) : [];
+    const names = new Set(existing.map(r => r.name));
+    mo.cols.forEach(name => {
+      if (!names.has(name)) existing.push({ id: uid(), name, female: 0, male: 0, count: 0 });
+    });
+    return existing;
+  });
+}
+
+function computeAnnualRowsFromMonths() {
+  const byName = new Map();
+  monthRows.flat().forEach(r => {
+    if (!r.name) return;
+    if (!byName.has(r.name)) byName.set(r.name, { id: uid(), name: r.name, female: 0, male: 0, count: 0 });
+    const agg = byName.get(r.name);
+    agg.female += r.female || 0;
+    agg.male += r.male || 0;
+    agg.count = agg.female + agg.male;
+  });
+  return Array.from(byName.values());
+}
+
+function syncAnnualRowsFromMonths() {
+  ensureMonthRowsShape();
+  rows = computeAnnualRowsFromMonths();
+}
+
+function findMonthRow(idx, name) {
+  let row = monthRows[idx].find(r => r.name === name);
+  if (!row) {
+    row = { id: uid(), name, female: 0, male: 0, count: 0 };
+    monthRows[idx].push(row);
+  }
+  return row;
+}
+
+function distributeAnnualDelta(name, field, delta) {
+  if (!delta || !name) return;
+  const latestIdx = Math.max(0, MONTHS.length - 1);
+  if (delta > 0) {
+    const row = findMonthRow(latestIdx, name);
+    row[field] = (row[field] || 0) + delta;
+    row.count = (row.female || 0) + (row.male || 0);
+    return;
+  }
+  let remain = Math.abs(delta);
+  for (let i = monthRows.length - 1; i >= 0 && remain > 0; i--) {
+    const row = monthRows[i].find(r => r.name === name);
+    if (!row) continue;
+    const take = Math.min(row[field] || 0, remain);
+    row[field] -= take;
+    row.count = (row.female || 0) + (row.male || 0);
+    remain -= take;
+  }
+}
+
+function renameChannelEverywhere(oldName, newName) {
+  if (!oldName || !newName || oldName === newName) return;
+  monthRows.forEach(mr => {
+    const target = mr.find(r => r.name === newName);
+    mr.forEach(r => {
+      if (r.name !== oldName) return;
+      if (target && target !== r) {
+        target.female += r.female || 0;
+        target.male += r.male || 0;
+        target.count = target.female + target.male;
+        r._remove = true;
+      } else {
+        r.name = newName;
+      }
+    });
+    for (let i = mr.length - 1; i >= 0; i--) if (mr[i]._remove) mr.splice(i, 1);
+  });
+  syncAnnualRowsFromMonths();
+}
+
+function removeChannelEverywhere(name) {
+  if (!name) return;
+  monthRows = monthRows.map(mr => mr.filter(r => r.name !== name));
+  syncAnnualRowsFromMonths();
+}
+
+function refreshAllViews() {
+  if (isEditing) renderTable(); else { renderCompact(); updateChart(); }
+  if (chartMonthFilter !== null && document.getElementById('monthSummaryWrap').style.display !== 'none') {
+    renderMonthSummary(chartMonthFilter);
+  }
+  if (selectedSlice) showDetail(selectedSlice);
+}
+
+// 拖曳滾動（按住左鍵拖動）
+function enableDragScroll(el) {
+  let down = false, startX, scrollLeft;
+  el.addEventListener('mousedown', e => {
+    down = true; startX = e.pageX - el.offsetLeft; scrollLeft = el.scrollLeft;
+    el.style.cursor = 'grabbing'; el.style.userSelect = 'none';
+  });
+  const end = () => { down = false; el.style.cursor = ''; el.style.userSelect = ''; };
+  el.addEventListener('mouseup', end);
+  el.addEventListener('mouseleave', end);
+  el.addEventListener('mousemove', e => {
+    if (!down) return;
+    e.preventDefault();
+    el.scrollLeft = scrollLeft - (e.pageX - el.offsetLeft - startX);
+  });
+}
+
+// 月份篩選（兩層：年 → 月）
+function buildFilterBtns(container) {
+  container.innerHTML = '';
+
+  // 年份列
+  const yRow = document.createElement('div');
+  yRow.className = 'cf-row';
+  [2026].forEach(yr => {
+    const b = document.createElement('button');
+    b.className = 'cf-btn';
+    b.dataset.yval = String(yr);
+    b.textContent = `${yr}年`;
+    b.onclick = () => setChartYear(yr);
+    yRow.appendChild(b);
+  });
+  container.appendChild(yRow);
+  enableDragScroll(yRow);
+
+  // 月份列（預設隱藏）
+  const mRow = document.createElement('div');
+  mRow.className = 'cf-row cf-month-row';
+  mRow.style.display = 'none';
+  YEAR_MONTHS.forEach((mo, i) => {
+    const b = document.createElement('button');
+    b.className = 'cf-btn';
+    b.dataset.mval = String(i);
+    b.textContent = mo.key;
+    b.onclick = () => setChartMonth(i);
+    mRow.appendChild(b);
+  });
+  container.appendChild(mRow);
+  enableDragScroll(mRow);
+}
+buildFilterBtns(document.getElementById('cfRow'));
+buildFilterBtns(document.getElementById('cfRow2'));
+enableDragScroll(document.getElementById('chartLegend').parentElement);
+
+function setChartYear(yr) {
+  chartYearFilter = yr;
+  chartMonthFilter = null;
+  // 同步年份按鈕
+  document.querySelectorAll('[data-yval]').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.yval) === yr)
+  );
+  // 顯示月份列，清除月份選取
+  document.querySelectorAll('.cf-month-row').forEach(r => { r.style.display = ''; });
+  document.querySelectorAll('[data-mval]').forEach(b => b.classList.remove('active'));
+  // 更新標題與圖表
+  document.getElementById('chartSub').textContent = `${yr}年 · 全部累計`;
+  document.getElementById('chartFootLbl').textContent = '累計面試人數';
+  selectedSlice = null;
+  closeDetail();
+  document.getElementById('monthSummaryWrap').style.display = 'none';
+  if (isEditing) renderTable();
+  renderCompact();
+  updateChart();
+  saveSoon();
+}
+
+// 手機長按圓餅圖色塊顯示明細
+(function(){
+  const canvas = document.getElementById('pieChart');
+  let pressTimer = null;
+  canvas.addEventListener('touchstart', e => {
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+      const touch = e.touches[0];
+      const els = chart.getElementsAtEventForMode(touch, 'nearest', {intersect: true}, false);
+      if (!els.length) return;
+      const src = getChartSrc();
+      const active = src.filter(r => r.count > 0);
+      const disp = active.length ? active : src;
+      const ch = disp[els[0].index];
+      if (ch && ch.count > 0) {
+        selectedSlice = ch.name;
+        showDetail(ch.name);
+      }
+    }, 500);
+  }, {passive: true});
+  canvas.addEventListener('touchend',  () => clearTimeout(pressTimer), {passive: true});
+  canvas.addEventListener('touchmove', () => clearTimeout(pressTimer), {passive: true});
+})();
+
+function setChartMonth(idx) {
+  chartMonthFilter = idx;
+  // 同步月份按鈕（只更新 data-mval，不動 data-yval）
+  document.querySelectorAll('[data-mval]').forEach(b => {
+    const bv = parseInt(b.dataset.mval);
+    b.classList.toggle('active', bv === idx);
+  });
+  const yr = chartYearFilter || 2026;
+  const sub = idx===null ? `${yr}年 · 全部累計` : `${yr}年 ${YEAR_MONTHS[idx].key} · 單月`;
+  document.getElementById('chartSub').textContent = sub;
+  document.getElementById('chartFootLbl').textContent = idx===null ? '累計面試人數' : `${YEAR_MONTHS[idx].key}面試人數`;
+  selectedSlice = null;
+  closeDetail();
+  if (idx !== null) {
+    renderMonthSummary(idx);
+  } else {
+    document.getElementById('monthSummaryWrap').style.display = 'none';
+  }
+  // 若編輯中，切換月份後重繪 table 顯示新月份資料
+  if (isEditing) renderTable();
+  renderCompact();  // 更新右側列表人數
+  updateChart();
+  saveSoon();
+}
+
+function renderMonthSummary(moIdx) {
+  const mo = YEAR_MONTHS[moIdx];
+  const edited = monthRows[moIdx]; // 使用可編輯月份資料，而非原始週次資料
+  const wrap = document.getElementById('monthSummaryWrap');
+  let totF = 0, totM = 0;
+
+  // 各渠道人數 → 從 monthRows 讀（含使用者編輯）
+  const visibleEditedRows = edited.filter(r => ((r.female || 0) + (r.male || 0)) > 0);
+  edited.forEach(r => { totF += r.female || 0; totM += r.male || 0; });
+  const rowsHtml = visibleEditedRows.length ? visibleEditedRows.map(r => {
+    const f = r.female||0, m = r.male||0;
+    return `<tr>
+      <td style="font-weight:500;color:var(--text)">${esc(r.name)}</td>
+      <td>${f > 0 ? `<span class="ft"><span class="fd"></span>${f}</span>` : '<span class="nil">—</span>'}</td>
+      <td>${m > 0 ? `<span class="mt"><span class="md"></span>${m}</span>` : '<span class="nil">—</span>'}</td>
+      <td class="cnt">${f + m > 0 ? f + m : '—'}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:12px">無人數記錄</td></tr>`;
+
+  // 週次加總 → 從原始週資料讀（有幾週就顯示幾週）
+  let wkTotF = 0, wkTotM = 0;
+  const visibleWeeks = mo.weeks
+    .map(w => ({ ...w, wf: w.data.reduce((s,d)=>s+d[0],0), wm: w.data.reduce((s,d)=>s+d[1],0) }))
+    .filter(w => w.wf + w.wm > 0);
+  const weekRowsHtml = visibleWeeks.length
+    ? visibleWeeks.map(w => {
+        const wf = w.wf;
+        const wm = w.wm;
+        wkTotF += wf; wkTotM += wm;
+        return `<tr>
+          <td>${w.period}</td>
+          <td>${wf > 0 ? `<span class="ft"><span class="fd"></span>${wf}</span>` : '<span class="nil">—</span>'}</td>
+          <td>${wm > 0 ? `<span class="mt"><span class="md"></span>${wm}</span>` : '<span class="nil">—</span>'}</td>
+          <td class="cnt">${wf + wm > 0 ? wf + wm : '—'}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:12px">無週次記錄</td></tr>`;
+
+  wrap.style.display = 'block';
+  wrap.innerHTML = `<div class="detail-wrap">
+    <div class="detail-head" style="border-bottom:1px solid var(--border);margin-bottom:12px;padding-bottom:10px">
+      <h3>2026年${mo.key} · 全渠道彙總</h3>
+    </div>
+    <div class="mo-summary-grid">
+      <div>
+        <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px;letter-spacing:.03em">各渠道人數</div>
+        <table class="d-table">
+          <thead><tr><th>渠道</th><th>女</th><th>男</th><th>合計</th></tr></thead>
+          <tbody>${rowsHtml}
+            <tr class="d-total">
+              <td>月合計</td>
+              <td><span class="ft"><span class="fd"></span>${totF}</span></td>
+              <td><span class="mt"><span class="md"></span>${totM}</span></td>
+              <td class="cnt">${totF + totM}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px;letter-spacing:.03em">週次加總</div>
+        <table class="d-table">
+          <thead><tr><th>週期</th><th>女</th><th>男</th><th>合計</th></tr></thead>
+          <tbody>${weekRowsHtml}
+            ${visibleWeeks.length ? `<tr class="d-total">
+              <td>月合計</td>
+              <td><span class="ft"><span class="fd"></span>${wkTotF}</span></td>
+              <td><span class="mt"><span class="md"></span>${wkTotM}</span></td>
+              <td class="cnt">${wkTotF + wkTotM}</td>
+            </tr>` : ''}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+function getChartSrc() {
+  return getEditRows();
+}
+
+const chartCtx = document.getElementById('pieChart').getContext('2d');
+const chart = new Chart(chartCtx, {
+  type: 'doughnut',
+  data: { labels:[], datasets:[{data:[], backgroundColor:[], borderColor:'#fff', borderWidth:3, hoverOffset:10}] },
+  options: {
+    responsive: true,
+    animation: {duration:350},
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks:{ label: c=>{
+        const t=c.dataset.data.reduce((a,b)=>a+b,0);
+        return `  ${c.label}：${c.parsed} 人（${t?((c.parsed/t)*100).toFixed(1):0}%）`;
+      }}}
+    },
+    cutout: '62%',
+    onClick: (e, els) => {
+      if (!els.length) return;
+      const src = getChartSrc();
+      const active = src.filter(r => r.count > 0);
+      const disp = active.length ? active : src;
+      const ch = disp[els[0].index];
+      if (!ch || ch.count === 0) return;
+      if (selectedSlice === ch.name) { selectedSlice=null; closeDetail(); }
+      else { selectedSlice=ch.name; showDetail(ch.name); }
+    }
+  }
+});
+
+function buildLegend() {
+  const labels = chart.data.labels;
+  const colors = chart.data.datasets[0].backgroundColor;
+  document.getElementById('chartLegend').innerHTML =
+    labels.map((name, i) =>
+      `<span class="leg-item"><span class="leg-dot" style="background:${colors[i]}"></span>${name}</span>`
+    ).join('');
+}
+
+function updateChart() {
+  if (chartMonthFilter === null) syncAnnualRowsFromMonths();
+  const src = getChartSrc();
+  const total = src.reduce((s,r)=>s+(r.count||0),0);
+  document.getElementById('totalCount').textContent = total;
+  const active = src.filter(r=>r.count>0);
+  const disp = active.length ? active : src;
+  chart.data.labels = disp.map(r=>r.name);
+  chart.data.datasets[0].data = active.length ? disp.map(r=>r.count) : disp.map(()=>1);
+  chart.data.datasets[0].backgroundColor = disp.map((_,i)=>PALETTE[i%PALETTE.length]);
+  chart.update();
+  buildLegend();
+  getEditRows().forEach(r=>{
+    const el=document.querySelector(`[data-pct="${r.id}"]`);
+    if(el) el.textContent = total?((r.count/total)*100).toFixed(1)+'%':'—';
+  });
+  updateKPI(total);
+}
+
+/* ══════════════════════ 詳細面板 ══════════════════════ */
+function showDetail(chName) {
+  const wrap = document.getElementById('detailWrap');
+
+  if (chartMonthFilter === null) {
+    // 全部模式：從 monthRows 讀各月彙總（含用戶編輯）
+    const rows_data = YEAR_MONTHS.map((mo, idx) => {
+      const mr = monthRows[idx].find(r => r.name === chName);
+      return { mo, f: mr ? (mr.female||0) : 0, m: mr ? (mr.male||0) : 0 };
+    });
+    const totF = rows_data.reduce((s,r)=>s+r.f,0);
+    const totM = rows_data.reduce((s,r)=>s+r.m,0);
+    const visibleRowsData = rows_data.filter(r => r.f + r.m > 0);
+
+    let html = `<table class="d-table"><thead><tr>
+      <th>月份</th><th>女</th><th>男</th><th>合計</th>
+    </tr></thead><tbody>`;
+    for(const {mo, f, m} of visibleRowsData){
+      html += `<tr>
+        <td>${mo.key}</td>
+        <td>${f>0?`<span class="ft"><span class="fd"></span>${f}</span>`:'<span class="nil">—</span>'}</td>
+        <td>${m>0?`<span class="mt"><span class="md"></span>${m}</span>`:'<span class="nil">—</span>'}</td>
+        <td class="cnt">${f+m>0?f+m:'—'}</td>
+      </tr>`;
+    }
+    if (!visibleRowsData.length) {
+      html += `<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:10px;font-size:.8rem">無人數記錄</td></tr>`;
+    }
+    html += `<tr class="d-total">
+      <td>累計</td>
+      <td><span class="ft"><span class="fd"></span>${totF}</span></td>
+      <td><span class="mt"><span class="md"></span>${totM}</span></td>
+      <td class="cnt">${totF+totM}</td>
+    </tr></tbody></table>`;
+
+    renderDetailPanel(wrap, `${chName} · 各月彙總`, html);
+
+  } else {
+    // 月份模式：優先顯示週次明細；無週資料時用 monthRows 月合計
+    const mo = YEAR_MONTHS[chartMonthFilter];
+    const ci = mo.cols.indexOf(chName);
+    const mr = monthRows[chartMonthFilter].find(r => r.name === chName);
+
+    let totF=0, totM=0;
+    let html = `<table class="d-table"><thead><tr>
+      <th>週期</th><th>女</th><th>男</th><th>合計</th>
+    </tr></thead><tbody>`;
+
+    if (mo.weeks.length > 0) {
+      const visibleWeeks = mo.weeks
+        .map(w => ({
+          period: w.period,
+          f: ci>=0 ? w.data[ci][0] : 0,
+          m: ci>=0 ? w.data[ci][1] : 0
+        }))
+        .filter(w => w.f + w.m > 0);
+      for(const w of visibleWeeks){
+        const f = w.f;
+        const m = w.m;
+        totF+=f; totM+=m;
+        html += `<tr>
+          <td>${w.period}</td>
+          <td>${f>0?`<span class="ft"><span class="fd"></span>${f}</span>`:'<span class="nil">—</span>'}</td>
+          <td>${m>0?`<span class="mt"><span class="md"></span>${m}</span>`:'<span class="nil">—</span>'}</td>
+          <td class="cnt">${f+m}</td>
+        </tr>`;
+      }
+      if (!visibleWeeks.length) {
+        totF = mr ? (mr.female||0) : 0;
+        totM = mr ? (mr.male||0) : 0;
+        html += `<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:10px;font-size:.8rem">無週次記錄</td></tr>`;
+      }
+    } else {
+      // 無週資料：顯示編輯月份合計
+      totF = mr ? (mr.female||0) : 0;
+      totM = mr ? (mr.male||0) : 0;
+      html += `<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:10px;font-size:.8rem">無週次記錄（顯示月合計）</td></tr>`;
+    }
+    html += `<tr class="d-total">
+      <td>${mo.key}合計</td>
+      <td><span class="ft"><span class="fd"></span>${totF}</span></td>
+      <td><span class="mt"><span class="md"></span>${totM}</span></td>
+      <td class="cnt">${totF+totM}</td>
+    </tr></tbody></table>`;
+
+    renderDetailPanel(wrap, `${chName} · 2026年${mo.key} 週次明細`, html);
+  }
+}
+
+function renderDetailPanel(wrap, title, tableHtml) {
+  wrap.style.display = 'block';
+  wrap.innerHTML = `<div class="detail-wrap">
+    <div class="detail-head">
+      <h3>${title}</h3>
+      <button class="close-btn" onclick="closeDetail()">✕</button>
+    </div>
+    <div style="overflow-x:auto">${tableHtml}</div>
+  </div>`;
+  wrap.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function closeDetail() {
+  const wrap = document.getElementById('detailWrap');
+  wrap.style.display = 'none';
+  wrap.innerHTML = '';
+}
+
+/* ══════════════════════ 編輯切換 ══════════════════════ */
+let isEditing = false;
+
+function toggleEdit() {
+  isEditing = !isEditing;
+  const btn = document.getElementById('editToggle');
+  btn.textContent = isEditing ? '完成' : '編輯';
+  btn.classList.toggle('on', isEditing);
+  document.getElementById('cptView').style.display  = isEditing ? 'none'  : 'block';
+  document.getElementById('editView').style.display = isEditing ? 'block' : 'none';
+  if (isEditing) renderTable();
+}
+
+function renderCompact() {
+  // 月份模式：顯示當月各渠道數；全部模式：顯示累計
+  const src = getChartSrc();
+  const total = src.reduce((s,r)=>s+(r.count||0),0);
+  const displayRows = src.filter(r => (r.count || 0) > 0);
+  const monthLabel = chartMonthFilter !== null ? `2026年${YEAR_MONTHS[chartMonthFilter].key}` : '全部累計';
+  document.getElementById('cptView').innerHTML =
+    `<div style="font-size:.72rem;color:var(--text3);margin-bottom:8px;letter-spacing:.03em">${monthLabel}</div>` +
+    (displayRows.length ? displayRows.map((r,i)=>`
+    <div class="cpt-row">
+      <span class="ch-dot" style="background:${PALETTE[i%PALETTE.length]}"></span>
+      <span class="cpt-name">${esc(r.name)}<span class="mobile-inline-count">${r.count} 人</span></span>
+      <span class="cpt-cnt">${r.count} 人</span>
+      <span class="cpt-pct">${total?((r.count/total)*100).toFixed(1):'0.0'}%</span>
+    </div>`).join('') : `<div class="cpt-empty">目前無人數記錄</div>`);
+}
+
+/* ══════════════════════ 可編輯表 ══════════════════════ */
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  const editRows = getEditRows();
+  const total = editRows.reduce((s,r)=>s+(r.count||0),0);
+  const usedNames = new Set(editRows.map(r=>r.name));
+
+  // 顯示目前編輯的期間
+  const periodLabel = chartMonthFilter !== null ? `2026年${YEAR_MONTHS[chartMonthFilter].key}` : '全部累計';
+  const existingLbl = document.getElementById('editPeriodLbl');
+  if (existingLbl) existingLbl.textContent = periodLabel;
+
+  editRows.forEach((r,i)=>{
+    const pct = total?((r.count/total)*100).toFixed(1)+'%':'—';
+    const tr = document.createElement('tr');
+
+    // 建立渠道選單，已被其他列使用的項目標灰 disabled
+    const optionSource = CHANNELS.some(ch => ch.name === r.name) ? CHANNELS : [{ name: r.name }, ...CHANNELS];
+    const opts = optionSource.map(ch => {
+      const takenByOther = usedNames.has(ch.name) && ch.name !== r.name;
+      return `<option value="${esc(ch.name)}"${ch.name===r.name?' selected':''}${takenByOther?' disabled':''} style="${takenByOther?'color:#ccc':''}">${ch.name}</option>`;
+    }).join('');
+
+    tr.innerHTML = `
+      <td><div class="ch-cell">
+        <span class="ch-dot" style="background:${PALETTE[i%PALETTE.length]}"></span>
+        <select class="ch-name-sel" data-id="${r.id}" onchange="handleNameSelect(this)">${opts}</select>
+      </div></td>
+      <td style="text-align:center">
+        <input type="number" min="0" value="${r.female||0}" data-id="${r.id}" data-field="female"
+          style="width:58px;text-align:center;color:var(--female);font-weight:600;font-size:.9rem"
+          oninput="handleInput(this)">
+      </td>
+      <td style="text-align:center">
+        <input type="number" min="0" value="${r.male||0}" data-id="${r.id}" data-field="male"
+          style="width:58px;text-align:center;color:var(--male);font-weight:600;font-size:.9rem"
+          oninput="handleInput(this)">
+      </td>
+      <td style="text-align:right;font-weight:700;font-size:.9rem;white-space:nowrap;padding-right:10px">${r.count||0}</td>
+      <td style="text-align:center"><button class="del-btn" onclick="delRow('${r.id}')">✕</button></td>`;
+    tbody.appendChild(tr);
+  });
+  renderCompact();
+  updateChart();
+  saveToStorage();
+}
+
+function handleNameSelect(el) {
+  const row = getEditRows().find(r => r.id === el.dataset.id);
+  if (!row) return;
+  const oldName = row.name;
+  row.name = el.value;
+  if (chartMonthFilter === null) {
+    renameChannelEverywhere(oldName, row.name);
+  } else {
+    syncAnnualRowsFromMonths();
+  }
+  renderTable();
+  refreshSummaryIfVisible();
+  saveToStorage();
+}
+
+function handleInput(el){
+  const {id,field}=el.dataset, row=getEditRows().find(r=>r.id===id);
+  if(!row) return;
+  const next = Math.max(0, parseInt(el.value)||0);
+  if (chartMonthFilter === null && (field === 'female' || field === 'male')) {
+    distributeAnnualDelta(row.name, field, next - (row[field] || 0));
+    syncAnnualRowsFromMonths();
+  } else {
+    row[field] = next;
+    if(field==='female'||field==='male') row.count = (row.female||0)+(row.male||0);
+    syncAnnualRowsFromMonths();
+  }
+  renderCompact();
+  updateChart();
+  refreshSummaryIfVisible();
+  saveToStorage();
+}
+function adjustGender(id, field, delta) {
+  const row = getEditRows().find(r=>r.id===id);
+  if (!row) return;
+  if (chartMonthFilter === null) {
+    distributeAnnualDelta(row.name, field, delta);
+    syncAnnualRowsFromMonths();
+  } else {
+    row[field] = Math.max(0, (row[field]||0) + delta);
+    row.count = (row.female||0)+(row.male||0);
+    syncAnnualRowsFromMonths();
+  }
+  const inp = document.querySelector(`input[data-id="${id}"][data-field="${field}"]`);
+  const refreshed = getEditRows().find(r=>r.id===id) || getEditRows().find(r=>r.name===row.name);
+  if (inp && refreshed) inp.value = refreshed[field];
+  renderTable();
+  refreshSummaryIfVisible();
+  saveToStorage();
+}
+function refreshSummaryIfVisible() {
+  if (chartMonthFilter !== null && document.getElementById('monthSummaryWrap').style.display !== 'none')
+    renderMonthSummary(chartMonthFilter);
+}
+function addRow(){
+  const er = getEditRows();
+  const usedNames = new Set(er.map(r=>r.name));
+  const available = CHANNELS.find(ch => !usedNames.has(ch.name));
+  const name = available ? available.name : '';
+  if (chartMonthFilter === null) {
+    monthRows.forEach(mr => mr.push({id:uid(), name, female:0, male:0, count:0}));
+    syncAnnualRowsFromMonths();
+  } else {
+    er.push({id:uid(), name, female:0, male:0, count:0});
+    syncAnnualRowsFromMonths();
+  }
+  renderTable();
+  refreshSummaryIfVisible();
+  saveToStorage();
+}
+function delRow(id){
+  const er = getEditRows();
+  if(er.length<=1) return;
+  const row = er.find(r => r.id === id);
+  if(chartMonthFilter !== null) {
+    monthRows[chartMonthFilter] = er.filter(r=>r.id!==id);
+    syncAnnualRowsFromMonths();
+  } else {
+    removeChannelEverywhere(row ? row.name : '');
+  }
+  renderTable();
+  refreshSummaryIfVisible();
+  saveToStorage();
+}
+function exportPNG(){ const a=document.createElement('a'); a.href=document.getElementById('pieChart').toDataURL(); a.download='彩翼之星渠道.png'; a.click(); }
+function exportCSV(){
+  const er=getEditRows();
+  const total=er.reduce((s,r)=>s+(r.count||0),0);
+  const body=er.map(r=>`"${r.name}",${r.female||0},${r.male||0},${r.count||0},${total?((r.count/total)*100).toFixed(1):'0'}`).join('\n');
+  const blob=new Blob(['﻿渠道名稱,女,男,合計,佔比(%)\n'+body],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='彩翼之星渠道.csv'; a.click();
+}
+
+/* ══════════════════════ KPI ══════════════════════ */
+function updateKPI(total) {
+  syncAnnualRowsFromMonths();
+  const annualRows = rows;
+  const sorted=[...annualRows].filter(r=>r.count>0).sort((a,b)=>b.count-a.count);
+  const best=sorted[0];
+  const mTotals=monthRows.map(mr => mr.reduce((s,r)=>s+(r.count||0),0));
+  const bestMoIdx=mTotals.indexOf(Math.max(...mTotals));
+  const tf = annualRows.reduce((s,r)=>s+(r.female||0),0);
+  const tm = annualRows.reduce((s,r)=>s+(r.male||0),0);
+  document.getElementById('kpiRow').innerHTML=`
+    <div class="kpi"><div class="k-lbl">累計面試</div><div class="k-val">${tf+tm}<span class="k-sub">人次</span></div></div>
+    <div class="kpi"><div class="k-lbl">最佳渠道</div><div class="k-val">${best?best.name:'—'}${best?`<span class="k-sub">${best.count} 人</span>`:''}</div></div>
+    <div class="kpi"><div class="k-lbl">最佳月份</div><div class="k-val">2026年${YEAR_MONTHS[bestMoIdx]?.key || '—'}<span class="k-sub">${mTotals[bestMoIdx] || 0} 人</span></div></div>
+    <div class="kpi"><div class="k-lbl">女 / 男</div><div class="k-val"><span style="color:var(--female)">${tf}</span> / <span style="color:var(--male)">${tm}</span><span class="k-sub">人</span></div></div>
+  `;
+}
+
+/* ══════════════════════ 渠道資訊 ══════════════════════ */
+let isInfoEditing = false;
+
+function toggleInfoEdit() {
+  isInfoEditing = !isInfoEditing;
+  isOfflineEditing = isInfoEditing;  // 同步線下傳單
+  const btn = document.getElementById('infoEditToggle');
+  btn.textContent = isInfoEditing ? '完成' : '編輯';
+  btn.classList.toggle('on', isInfoEditing);
+  renderInfo();
+  renderOffline();
+}
+
+const INFO_CATS = ['社群媒體','傳統人力銀行','兼職多','主線上課平台','主線下課平台'];
+
+function updateStatus(gi, val) {
+  CHANNELS[gi].status = val;
+  saveToStorage();
+}
+
+function updateInfoField(gi, field, val) {
+  const oldName = CHANNELS[gi]?.name;
+  CHANNELS[gi][field] = val;
+  if (field === 'name') {
+    renameChannelEverywhere(oldName, val);
+    refreshAllViews();
+  }
+  saveToStorage();
+}
+
+function deleteChannel(gi) {
+  const name = CHANNELS[gi]?.name;
+  CHANNELS.splice(gi, 1);
+  removeChannelEverywhere(name);
+  renderInfo();
+  refreshAllViews();
+  saveToStorage();
+}
+
+function addChannelToCat(cat) {
+  // 插入到該分類最後一筆的後面
+  let insertIdx = CHANNELS.length;
+  for (let i = CHANNELS.length - 1; i >= 0; i--) {
+    if (CHANNELS[i].cat === cat) { insertIdx = i + 1; break; }
+  }
+  CHANNELS.splice(insertIdx, 0, { cat, name: '', monthly: '', quarterly: '', status: '', notes: '' });
+  renderInfo();
+  saveToStorage();
+}
+
+function renderInfo() {
+  const catOrder = [];
+  const catMap = new Map();
+  CHANNELS.forEach((r, gi) => {
+    if (!catMap.has(r.cat)) { catMap.set(r.cat, []); catOrder.push(r.cat); }
+    catMap.get(r.cat).push({ r, gi });
+  });
+
+  const delCol = isInfoEditing ? '<th style="width:32px"></th>' : '';
+  const colCount = isInfoEditing ? 6 : 5;
+
+  const blocksHtml = catOrder.map(cat => {
+    let rowsHtml = catMap.get(cat).map(({ r, gi }) => {
+      if (isInfoEditing) {
+        return `<tr>
+          <td><input class="i-edit-input" value="${esc(r.name)}" oninput="updateInfoField(${gi},'name',this.value)" placeholder="項目名稱" style="font-weight:600;min-width:80px"></td>
+          <td><input class="i-edit-input" value="${esc(r.monthly)}" oninput="updateInfoField(${gi},'monthly',this.value)" placeholder="—"></td>
+          <td><input class="i-edit-input" value="${esc(r.quarterly)}" oninput="updateInfoField(${gi},'quarterly',this.value)" placeholder="—"></td>
+          <td><select class="status-select" onchange="updateInfoField(${gi},'status',this.value)">
+            <option value=""      ${!r.status          ?'selected':''}>—</option>
+            <option value="使用中" ${r.status==='使用中' ?'selected':''}>使用中</option>
+            <option value="可以"   ${r.status==='可以'   ?'selected':''}>可以</option>
+            <option value="無法"   ${r.status==='無法'   ?'selected':''}>無法</option>
+          </select></td>
+          <td><input class="i-edit-input" value="${esc(r.notes)}" oninput="updateInfoField(${gi},'notes',this.value)" placeholder="備註…"></td>
+          <td><button class="del-row-btn" onclick="deleteChannel(${gi})">✕</button></td>
+        </tr>`;
+      } else {
+        const bc = r.status==='使用中'?'b-on': r.status==='可以'?'b-ok': r.status==='無法'?'b-no':'b-nil';
+        const mc = r.monthly   ? `<span class="cost">${esc(r.monthly)}</span>`   : '<span class="nil">—</span>';
+        const qc = r.quarterly ? `<span class="cost">${esc(r.quarterly)}</span>` : '<span class="nil">—</span>';
+        const st = r.status    ? `<span class="badge ${bc}">${r.status}</span>`  : '<span class="b-nil">—</span>';
+        return `<tr>
+          <td><span class="ch-name">${esc(r.name)}</span></td>
+          <td>${mc}</td><td>${qc}</td>
+          <td>${st}</td>
+          <td><span class="note-text">${esc(r.notes)}</span></td>
+        </tr>`;
+      }
+    }).join('');
+
+    const addRow = isInfoEditing ? `<tr class="cat-add-row">
+      <td colspan="${colCount}">
+        <button class="cat-add-btn" onclick="addChannelToCat('${esc(cat)}')">＋ 新增</button>
+      </td>
+    </tr>` : '';
+
+    return `<div class="info-cat-card">
+      <div class="info-cat-head-row">
+        <span class="info-cat-title">${cat}</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="i-table">
+          <thead><tr>
+            <th>項目</th>
+            <th>月費 / 廣告</th>
+            <th>季費</th>
+            <th>狀況</th>
+            <th>備註</th>
+            ${delCol}
+          </tr></thead>
+          <tbody>${rowsHtml}${addRow}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('infoBlocks').innerHTML = blocksHtml;
+  saveToStorage();
+}
+
+/* ══════════════════════ 頁籤 ══════════════════════ */
+function switchTab(i){
+  activeTab = i;
+  document.querySelectorAll('.tab-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
+  document.querySelectorAll('.tab-pane').forEach((p,j)=>p.classList.toggle('active',j===i));
+  saveToStorage();
+}
+
+/* ══════════════════════ 線下傳單 ══════════════════════ */
+const OFFLINE_STATUS = ['未執行','執行中','已完成','暫停'];
+
+let OFFLINE = [
+  { id: uid(), name:'傳單', qty:200, cost:'500–1000', status:'未執行', notes:'' },
+  { id: uid(), name:'名片', qty:200, cost:'500–1000', status:'未執行', notes:'' },
+];
+let isOfflineEditing = false;
+
+function toggleOfflineEdit() {
+  isOfflineEditing = !isOfflineEditing;
+  const btn = document.getElementById('offlineEditToggle');
+  if (btn) {
+    btn.textContent = isOfflineEditing ? '完成' : '編輯';
+    btn.classList.toggle('on', isOfflineEditing);
+  }
+  renderOffline();
+}
+
+function updateOfflineField(id, field, val) {
+  const row = OFFLINE.find(r => r.id === id);
+  if (!row) return;
+  row[field] = field === 'qty' ? (parseInt(val) || 0) : val;
+  saveToStorage();
+}
+
+function deleteOfflineRow(id) {
+  OFFLINE = OFFLINE.filter(r => r.id !== id);
+  renderOffline();
+  saveToStorage();
+}
+
+function addOfflineRow() {
+  OFFLINE.push({ id: uid(), name:'', qty:0, cost:'', status:'未執行', notes:'' });
+  renderOffline();
+  saveToStorage();
+  document.getElementById('addOfflineBtnWrap').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function renderOffline() {
+  const statusOpts = (cur) => OFFLINE_STATUS.map(s =>
+    `<option value="${s}"${s===cur?' selected':''}>${s}</option>`).join('');
+
+  const statusBadge = (s) => {
+    const cls = s==='執行中'?'b-on': s==='已完成'?'b-ok': s==='暫停'?'b-no':'b-nil';
+    return s ? `<span class="badge ${cls}">${s}</span>` : '<span class="nil">—</span>';
+  };
+
+  const html = OFFLINE.map(r => {
+    if (isOfflineEditing) {
+      return `<tr>
+        <td><input class="i-edit-input" value="${esc(r.name)}" oninput="updateOfflineField('${r.id}','name',this.value)" placeholder="項目名稱" style="font-weight:600;min-width:70px"></td>
+        <td style="text-align:right"><input class="i-edit-input nc-input" type="number" min="0" value="${r.qty}" oninput="updateOfflineField('${r.id}','qty',this.value)" style="width:70px;text-align:right"></td>
+        <td><input class="i-edit-input" value="${esc(r.cost)}" oninput="updateOfflineField('${r.id}','cost',this.value)" placeholder="—"></td>
+        <td><select class="status-select" onchange="updateOfflineField('${r.id}','status',this.value)">${statusOpts(r.status)}</select></td>
+        <td><input class="i-edit-input" value="${esc(r.notes)}" oninput="updateOfflineField('${r.id}','notes',this.value)" placeholder="備注…"></td>
+        <td><button class="del-row-btn" onclick="deleteOfflineRow('${r.id}')" title="刪除">✕</button></td>
+      </tr>`;
+    } else {
+      return `<tr>
+        <td><span class="ch-name">${esc(r.name)}</span></td>
+        <td style="text-align:right;color:var(--text2)">${r.qty > 0 ? r.qty : '<span class="nil">—</span>'}</td>
+        <td>${r.cost ? `<span class="cost">${esc(r.cost)}</span>` : '<span class="nil">—</span>'}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td><span class="note-text">${esc(r.notes)}</span></td>
+      </tr>`;
+    }
+  }).join('');
+
+  document.getElementById('offlineBody').innerHTML = html;
+  document.getElementById('offlineDelTh').style.display = isOfflineEditing ? '' : 'none';
+  document.getElementById('addOfflineBtnWrap').style.display = isOfflineEditing ? 'block' : 'none';
+  saveToStorage();
+}
+
+/* ══ 本地儲存 ══ */
+const STORAGE_KEY = 'cyw_dashboard_v1';
+const API_ENDPOINT = localStorage.getItem('cyw_dashboard_api_url') || ''; // 填入後端 URL 後會自動 GET/PUT 同步
+
+let saveTimer = null;
+let remoteTimer = null;
+let isLoadingData = false;
+
+function dashboardState() {
+  syncAnnualRowsFromMonths();
+  return {
+    version: 2,
+    updatedAt: new Date().toISOString(),
+    rows,
+    monthRows,
+    CHANNELS,
+    OFFLINE,
+    ui: { activeTab, chartYearFilter, chartMonthFilter }
+  };
+}
+
+function setSyncState(text) {
+  const el = document.getElementById('syncState');
+  if (el) el.textContent = text;
+}
+
+function formatVisitTime(date) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function recordVisitTime() {
+  const text = formatVisitTime(new Date());
+  try { localStorage.setItem('cyw_last_visit_time', text); } catch(e) {}
+  const el = document.getElementById('visitTime');
+  if (el) el.textContent = `進入時間：${text}`;
+}
+
+function saveToStorage() {
+  try {
+    const state = dashboardState();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    setSyncState(API_ENDPOINT ? '本機已保存，等待雲端同步' : '本機已同步');
+    scheduleRemoteSync(state);
+  } catch(e) {
+    setSyncState('本機保存失敗');
+  }
+}
+
+function saveSoon() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToStorage, 120);
+}
+
+function applyDashboardState(data) {
+  if (!data || typeof data !== 'object') return;
+  if (data.monthRows) {
+    monthRows = data.monthRows.map(mr =>
+      (Array.isArray(mr) ? mr : []).map(normalizeRow)
+    );
+  } else if (data.rows) {
+    rows = data.rows.map(normalizeRow);
+  }
+  ensureMonthRowsShape();
+  syncAnnualRowsFromMonths();
+  if (data.CHANNELS) CHANNELS.splice(0, CHANNELS.length, ...data.CHANNELS);
+  if (data.OFFLINE)  OFFLINE.splice(0, OFFLINE.length, ...data.OFFLINE);
+  if (data.ui) {
+    activeTab = Number.isInteger(data.ui.activeTab) ? data.ui.activeTab : 0;
+    chartYearFilter = data.ui.chartYearFilter ?? null;
+    chartMonthFilter = data.ui.chartMonthFilter ?? null;
+  }
+}
+
+function scheduleRemoteSync(state) {
+  if (!API_ENDPOINT || isLoadingData) return;
+  clearTimeout(remoteTimer);
+  remoteTimer = setTimeout(() => pushToApi(state), 600);
+}
+
+async function loadFromApi() {
+  if (!API_ENDPOINT) return false;
+  try {
+    setSyncState('雲端讀取中');
+    const res = await fetch(API_ENDPOINT, { method: 'GET', headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error(`GET ${res.status}`);
+    applyDashboardState(await res.json());
+    setSyncState('雲端已同步');
+    return true;
+  } catch(e) {
+    setSyncState('雲端讀取失敗，使用本機');
+    return false;
+  }
+}
+
+async function pushToApi(state) {
+  if (!API_ENDPOINT) return;
+  try {
+    setSyncState('雲端同步中');
+    const res = await fetch(API_ENDPOINT, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state || dashboardState())
+    });
+    if (!res.ok) throw new Error(`PUT ${res.status}`);
+    setSyncState('雲端已同步');
+  } catch(e) {
+    setSyncState('雲端同步失敗，本機已保存');
+  }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    applyDashboardState(data);
+  } catch(e) {}
+}
+
+/* ══ 初始化 ══ */
+async function initDashboard() {
+  recordVisitTime();
+  isLoadingData = true;
+  loadFromStorage();
+  await loadFromApi();
+  isLoadingData = false;
+  if (activeTab === 1) switchTab(1);
+  if (chartYearFilter) setChartYear(chartYearFilter);
+  if (chartMonthFilter !== null) setChartMonth(chartMonthFilter);
+  renderTable();   // 內含 renderCompact()
+  renderInfo();
+  renderOffline();
+  updateChart();
+}
+initDashboard();
+</script>
+</body>
+</html>
